@@ -3,18 +3,10 @@ name: Buddy 加油站每日自动化
 on:
   schedule:
     # GitHub 的 cron 是尽力而为：高负载时会延迟，甚至静默丢弃整次运行。
-    # 因此设三个时段互为备份 —— 只要有一个跑到，当天就完成了。
-    # 脚本是幂等的：已签过只会返回「今日已签过」，名额用完不会重派，
-    # 所以多触发不会重复领取。
-    #
-    # 间隔取 6 小时，是因为猫猫旅行时长最长 4 小时（travel/config 的
-    # duration_hours_max），这样下一轮运行时它必定已经到家，可以领回礼物。
-    # 三个点都落在 :10，避开 GitHub 文档提示的整点高负载期。
-    #
+    # 因此只保留一个主时段（北京时间 08:10）；若当天该次被 GitHub 丢弃，
+    # 本机本地自动化（16:00）会作为兜底补跑。脚本幂等，不会重复领取。
     # 注意 cron 按 UTC 计时，下面是 UTC，括号内为北京时间（UTC+8）。
-    - cron: "10 0 * * *"    # 00:10 UTC = 08:10 北京（主时段）
-    - cron: "10 6 * * *"    # 06:10 UTC = 14:10 北京（备份）
-    - cron: "10 12 * * *"   # 12:10 UTC = 20:10 北京（备份）
+    - cron: "10 0 * * *" # 00:10 UTC = 08:10 北京（主时段）
   workflow_dispatch:
 
 permissions:
@@ -31,7 +23,6 @@ jobs:
     steps:
       - name: 检出仓库
         uses: actions/checkout@v4
-
       - name: 定位 Python 解释器
         id: py
         # 解释器路径不写死版本号，动态取 runner 上可用的解释器
@@ -44,7 +35,6 @@ jobs:
           fi
           "$PY" -c 'import sys; print("使用解释器:", sys.executable, sys.version.split()[0])'
           echo "python_path=$PY" >> "$GITHUB_OUTPUT"
-
       - name: 执行签到与派猫猫
         id: run
         env:
@@ -66,7 +56,6 @@ jobs:
             echo "::warning::本轮存在未完成项，详见上方日志与飞书卡片"
           fi
           exit 0
-
       - name: 汇总
         if: always()
         env:
